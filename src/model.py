@@ -8,7 +8,7 @@ from keras.callbacks import BaseLogger, ModelCheckpoint, EarlyStopping, ReduceLR
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import compute_class_weight
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report
 
 # Reproducible random seed
 seed = 1
@@ -50,13 +50,13 @@ for train, test in kfold.split(X, Y):
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=metrics)
     # Fit the model
     history = model.fit(X[train], Y[train],
-        batch_size=1200, 
-        nb_epoch=100,
-        verbose=0,
-        shuffle=True,
-        validation_data=(X[test], Y[test]),
-        class_weight=class_weights,
-        callbacks=[baselogger, checkpointer, earlystop, reduce_lr])
+                        batch_size=1200,
+                        nb_epoch=100,
+                        verbose=0,
+                        shuffle=True,
+                        validation_data=(X[test], Y[test]),
+                        class_weight=class_weights,
+                        callbacks=[baselogger, checkpointer, earlystop, reduce_lr])
     # Evaluate the model
     scores = model.evaluate(X[test], Y[test], verbose=1)
     print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
