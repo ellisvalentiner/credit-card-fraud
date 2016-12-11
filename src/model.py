@@ -1,0 +1,61 @@
+#!/usr/bin/python
+
+import numpy as np
+import pandas as pd
+from keras.models import Sequential
+from keras.layers import Dense, Dropout #, PReLU, LeakyReLU, SReLU, LSTM, Activation
+from keras.callbacks import BaseLogger, ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from sklearn.preprocessing import StandardScaler
+from sklearn.utils import compute_class_weight
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import classification_report
+
+# Reproducible random seed
+seed = 1
+np.random.seed(seed)
+
+# Import and normalize the data
+data = pd.read_csv('data/creditcard.csv')
+data.iloc[:, 1:29] = StandardScaler().fit_transform(data.iloc[:, 1:29])
+data_matrix = data.as_matrix()
+X = data_matrix[:, 1:29]
+Y = data_matrix[:, 30]
+class_weights = dict(zip([0, 1], compute_class_weight('balanced', [0, 1], Y)))
+
+# Create model with k-fold cross-validation
+kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+cvscores = []
+predictions = np.zeros(len(Y))
+for train, test in kfold.split(X, Y):
+    # Define model
+    model = Sequential()
+    model.add(Dense(28, input_dim=28))
+    model.add(Dropout(0.1))
+    model.add(Dense(22))
+    model.add(Dropout(0.1))
+    model.add(Dense(1, activation='sigmoid'))
+    # Define callbacks
+    baselogger = BaseLogger()
+    checkpointer = ModelCheckpoint(filepath="tmp/weights.hdf5", verbose=1, save_best_only=True)
+    earlystop = EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=5, verbose=0, mode='auto')
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.001)
+    # Compile model
+    metrics = ['binary_accuracy', 'fmeasure', 'precision', 'recall']
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=metrics)
+    # Fit the model
+    history = model.fit(X[train], Y[train],
+        batch_size=1200, 
+        nb_epoch=100,
+        verbose=0,
+        shuffle=True,
+        validation_data=(X[test], Y[test]),
+        class_weight=class_weights,
+        callbacks=[baselogger, checkpointer, earlystop, reduce_lr])
+    # Evaluate the model
+    scores = model.evaluate(X[test], Y[test], verbose=1)
+    print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
+    cvscores.append(scores[1] * 100)
+    predictions[test] = model.predict_classes(X[test])
+
+print("%.2f%% (+/- %.2f%%)" % (np.mean(cvscores), np.std(cvscores)))
+print(classification_report(Y, predictions.flatten()))
