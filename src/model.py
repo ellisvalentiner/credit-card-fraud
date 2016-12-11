@@ -3,12 +3,12 @@
 import numpy as np
 import pandas as pd
 from keras.models import Sequential
-from keras.layers import Dense, Dropout #, PReLU, LeakyReLU, SReLU, LSTM, Activation
+from keras.layers import Dense, Dropout, SReLU
 from keras.callbacks import BaseLogger, ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import compute_class_weight
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 
 # Reproducible random seed
 seed = 1
@@ -25,14 +25,20 @@ class_weights = dict(zip([0, 1], compute_class_weight('balanced', [0, 1], Y)))
 # Create model with k-fold cross-validation
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
 cvscores = []
-predictions = np.zeros(len(Y))
+predictions = np.empty(len(Y))
+predictions[:] = np.NAN
+proba = np.empty([len(Y), kfold.n_splits])
+proba[:] = np.NAN
+k = 0 
 for train, test in kfold.split(X, Y):
     # Define model
     model = Sequential()
     model.add(Dense(28, input_dim=28))
-    model.add(Dropout(0.1))
+    model.add(SReLU())
+    model.add(Dropout(0.2))
     model.add(Dense(22))
-    model.add(Dropout(0.1))
+    model.add(SReLU())
+    model.add(Dropout(0.2))
     model.add(Dense(1, activation='sigmoid'))
     # Define callbacks
     baselogger = BaseLogger()
@@ -55,7 +61,12 @@ for train, test in kfold.split(X, Y):
     scores = model.evaluate(X[test], Y[test], verbose=1)
     print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
     cvscores.append(scores[1] * 100)
-    predictions[test] = model.predict_classes(X[test])
+    # Store the predicted probabilities and iterate k
+    proba[train, k] = model.predict_proba(X[train]).flatten()
+    k += 1
 
 print("%.2f%% (+/- %.2f%%)" % (np.mean(cvscores), np.std(cvscores)))
-print(classification_report(Y, predictions.flatten()))
+pred = np.nanmean(proba, 1) > 0.5
+pred = pred.astype(int)
+print(classification_report(Y, pred))
+print(pd.crosstab(Y, pred, rownames=['Truth'], colnames=['Predictions']))
