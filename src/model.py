@@ -14,6 +14,19 @@ from sklearn.metrics import classification_report
 seed = 1
 np.random.seed(seed)
 
+# Create the tmp output directory, if it doesn't exist
+try:
+    os.makedirs("tmp")
+except OSError:
+    if not os.path.isdir("tmp"):
+        raise
+
+try:
+    os.makedirs("logs")
+except OSError:
+    if not os.path.isdir("logs"):
+        raise
+
 # Import and normalize the data
 data = pd.read_csv('data/creditcard.csv')
 data.iloc[:, 1:29] = StandardScaler().fit_transform(data.iloc[:, 1:29])
