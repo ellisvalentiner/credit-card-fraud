@@ -9,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils import compute_class_weight
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import classification_report
+import os
 
 # Reproducible random seed
 seed = 1
