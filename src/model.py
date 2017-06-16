@@ -3,9 +3,12 @@
 from __future__ import print_function
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, SReLU
+from keras.layers import Dense, Dropout
+from keras_contrib.layers import SReLU
 from keras.callbacks import BaseLogger, ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, TensorBoard
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import compute_class_weight
@@ -54,8 +57,7 @@ def generate_model():
     _model.add(SReLU())
     _model.add(Dropout(0.2))
     _model.add(Dense(1, activation='sigmoid'))
-    metrics = ['binary_accuracy', 'fmeasure', 'precision', 'recall']
-    _model.compile(loss='binary_crossentropy', optimizer='adam', metrics=metrics)
+    _model.compile(loss='binary_crossentropy', optimizer='adam')
     return _model
 
 # Define callbacks
@@ -72,7 +74,7 @@ for train, test in kfold.split(X, Y):
     # Fit the model
     history = model.fit(X[train], Y[train],
                         batch_size=1200,
-                        nb_epoch=100,
+                        epochs=100,
                         verbose=0,
                         shuffle=True,
                         validation_data=(X[test], Y[test]),

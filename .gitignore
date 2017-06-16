@@ -94,3 +94,5 @@ ENV/
 # tmp files
 tmp/*
 data/*
+.idea/*
+logs/*

@@ -26,17 +26,17 @@ KERAS_BACKEND=tensorflow ipython src/model.py
 
 ## Performance
 
-The final model achieves an overall _f1_ score of 0.99, with 99% sensitivity and 12% precision for the positive class. That is, the model correctly identifies 99% of the fraud cases (true positives) but only 12% of the transactions predicted as fraudulent were actually fraudulent.
+The final model achieves an overall _f1_ score of 0.99, with 99% sensitivity and 11% precision for the positive class. That is, the model correctly identifies 99% of the fraud cases (true positives) but only 11% of the transactions predicted as fraudulent were actually fraudulent. The model catches 87% of the fraudulent cases — it could identify more cases of fraud but would then also have lower precision.
 
 #### Classification report
 
 ```
              precision    recall  f1-score   support
 
-        0.0       1.00      0.99      1.00    284315
-        1.0       0.21      0.86      0.33       492
+        0.0       1.00      0.99      0.99    284315
+        1.0       0.11      0.87      0.20       492
 
-avg / total       1.00      0.99      1.00    284807
+avg / total       1.00      0.99      0.99    284807
 ```
 
 #### Cross-tabulation
@@ -44,8 +44,8 @@ avg / total       1.00      0.99      1.00    284807
 ```
 Predictions   False  True 
 Truth                     
-0.0          282709   1606
-1.0              71    421
+0.0          281005   3310
+1.0              62    430
 ```
 
 #### ROC Curve
