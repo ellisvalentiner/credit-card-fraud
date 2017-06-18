@@ -1,14 +1,15 @@
 Keras==2.0.5
-PyYAML==3.12
+-e git+https://www.github.com/farizrahman4u/keras-contrib.git@b5669f4#egg=keras-contrib
 numpy==1.13.0
 pandas==0.19.1
 pyparsing==2.1.10
+pytest==3.1.2
 python-dateutil==2.6.0
 pytz==2016.10
+PyYAML==3.12
 scikit-learn==0.18.1
 scipy==0.19.0
 six==1.10.0
 sklearn==0.0
-wsgiref==0.1.2
 tensorflow==1.2.0
--e git+https://www.github.com/farizrahman4u/keras-contrib.git@b5669f4#egg=keras-contrib
+wsgiref==0.1.2
