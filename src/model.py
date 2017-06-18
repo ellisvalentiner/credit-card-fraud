@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras_contrib.layers import SReLU
-from keras.callbacks import BaseLogger, ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, TensorBoard
+from keras.callbacks import BaseLogger, EarlyStopping, ReduceLROnPlateau, TensorBoard
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import compute_class_weight
 from sklearn.model_selection import StratifiedKFold
@@ -67,7 +67,8 @@ reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr
 tensor_board = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
 
 # Storage
-W = []
+k = 0
+predictions = np.empty([len(Y), kfold.n_splits])
 for train, test in kfold.split(X, Y):
     # Define model
     model = generate_model()
@@ -80,20 +81,16 @@ for train, test in kfold.split(X, Y):
                         validation_data=(X[test], Y[test]),
                         class_weight=class_weights,
                         callbacks=[baselogger, earlystop, reduce_lr, tensor_board])
-    # Grab model weights
-    W.append(model.get_weights())
+    # Store the predicted probabilities and iterate k
+    predictions[train, k] = model.predict_proba(X[train]).flatten()
+    k += 1
 
-# Average the model weights
-w = np.mean(np.array(W), axis=0).tolist()
-
-# Ensemble model
-model = generate_model()
-model.set_weights(weights=w)
-yhat = model.predict_proba(X)
+# Average the model predictions
+yhat = np.nanmean(predictions, axis=1).round().astype(int)
 
 # Performance
-print(classification_report(Y, yhat > 0.5))
-print(pd.crosstab(Y, yhat.flatten() > 0.5, rownames=['Truth'], colnames=['Predictions']))
+print(classification_report(Y, yhat))
+print(pd.crosstab(Y, yhat.flatten(), rownames=['Truth'], colnames=['Predictions']))
 
 fpr, tpr, thresholds = roc_curve(Y, yhat)
 precision, recall, thresholds = precision_recall_curve(Y, yhat)
