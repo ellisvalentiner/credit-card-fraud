@@ -1,86 +1,116 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, SReLU
-from keras.callbacks import BaseLogger, ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, TensorBoard
+from keras.layers import Dense, Dropout
+from keras_contrib.layers import SReLU
+from keras.callbacks import BaseLogger, EarlyStopping, ReduceLROnPlateau, TensorBoard
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import compute_class_weight
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, roc_curve, auc, precision_recall_curve
+import os
 
 # Reproducible random seed
 seed = 1
-np.random.seed(seed)
 
-# Create the tmp output directory, if it doesn't exist
-try:
-    os.makedirs("tmp")
-except OSError:
-    if not os.path.isdir("tmp"):
-        raise
-
+# Create the output directories, if they don't exist
 try:
     os.makedirs("logs")
 except OSError:
     if not os.path.isdir("logs"):
         raise
 
+try:
+    os.makedirs("figs")
+except OSError:
+    if not os.path.isdir("figs"):
+        raise
+
 # Import and normalize the data
 data = pd.read_csv('data/creditcard.csv')
+
+# Standardize features by removing the mean and scaling to unit variance
 data.iloc[:, 1:29] = StandardScaler().fit_transform(data.iloc[:, 1:29])
+
+# Convert the data frame to its Numpy-array representation
 data_matrix = data.as_matrix()
 X = data_matrix[:, 1:29]
 Y = data_matrix[:, 30]
+
+# Estimate class weights since the dataset is unbalanced
 class_weights = dict(zip([0, 1], compute_class_weight('balanced', [0, 1], Y)))
 
-# Create model with k-fold cross-validation
+# Create train/test indices to split data in train/test sets
 kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
-cvscores = []
-predictions = np.empty(len(Y))
-predictions[:] = np.NAN
-proba = np.empty([len(Y), kfold.n_splits])
-proba[:] = np.NAN
-k = 0 
+
+
+# Define a model generator
+def generate_model():
+    _model = Sequential()
+    _model.add(Dense(22, input_dim=28))
+    _model.add(SReLU())
+    _model.add(Dropout(0.2))
+    _model.add(Dense(1, activation='sigmoid'))
+    _model.compile(loss='binary_crossentropy', optimizer='adam')
+    return _model
+
+# Define callbacks
+baselogger = BaseLogger()
+earlystop = EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=5, verbose=0, mode='auto')
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.001)
+tensor_board = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
+
+# Storage
+k = 0
+predictions = np.empty([len(Y), kfold.n_splits])
 for train, test in kfold.split(X, Y):
     # Define model
-    model = Sequential()
-    model.add(Dense(28, input_dim=28))
-    model.add(SReLU())
-    model.add(Dropout(0.2))
-    model.add(Dense(22))
-    model.add(SReLU())
-    model.add(Dropout(0.2))
-    model.add(Dense(1, activation='sigmoid'))
-    # Define callbacks
-    baselogger = BaseLogger()
-    checkpointer = ModelCheckpoint(filepath="tmp/weights.hdf5", verbose=1, save_best_only=True)
-    earlystop = EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=5, verbose=0, mode='auto')
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.001)
-    tensor_board = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
-    # Compile model
-    metrics = ['binary_accuracy', 'fmeasure', 'precision', 'recall']
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=metrics)
+    model = generate_model()
     # Fit the model
     history = model.fit(X[train], Y[train],
                         batch_size=1200,
-                        nb_epoch=100,
+                        epochs=100,
                         verbose=0,
                         shuffle=True,
                         validation_data=(X[test], Y[test]),
                         class_weight=class_weights,
-                        callbacks=[baselogger, checkpointer, earlystop, reduce_lr, tensor_board])
-    # Evaluate the model
-    scores = model.evaluate(X[test], Y[test], verbose=1)
-    print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
-    cvscores.append(scores[1] * 100)
+                        callbacks=[baselogger, earlystop, reduce_lr, tensor_board])
     # Store the predicted probabilities and iterate k
-    proba[train, k] = model.predict_proba(X[train]).flatten()
+    predictions[train, k] = model.predict_proba(X[train]).flatten()
     k += 1
 
-print("%.2f%% (+/- %.2f%%)" % (np.mean(cvscores), np.std(cvscores)))
-pred = np.nanmean(proba, 1) > 0.5
-pred = pred.astype(int)
-print(classification_report(Y, pred))
-print(pd.crosstab(Y, pred, rownames=['Truth'], colnames=['Predictions']))
+# Average the model predictions
+yhat = np.nanmean(predictions, axis=1).round().astype(int)
+
+# Performance
+print(classification_report(Y, yhat))
+print(pd.crosstab(Y, yhat.flatten(), rownames=['Truth'], colnames=['Predictions']))
+
+fpr, tpr, thresholds = roc_curve(Y, yhat)
+precision, recall, thresholds = precision_recall_curve(Y, yhat)
+roc_auc = auc(fpr, tpr)
+
+plt.title('Receiver Operating Characteristic')
+plt.plot(fpr, tpr, 'b', label='AUC = %0.2f'% roc_auc)
+plt.legend(loc='lower right')
+plt.plot([0,1],[0,1],'r--')
+plt.xlim([0.,1.])
+plt.ylim([0.,1.])
+plt.ylabel('True Positive Rate')
+plt.xlabel('False Positive Rate')
+plt.savefig("figs/ROC.png")
+
+plt.clf()
+plt.title('Precision Recall Curve')
+plt.plot(recall, precision, 'b')
+plt.xlim([0.,1.])
+plt.ylim([0.,1.])
+plt.ylabel('Precision')
+plt.xlabel('Recall')
+plt.savefig("figs/precision-recall.png")
