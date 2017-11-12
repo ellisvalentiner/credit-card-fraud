@@ -12,6 +12,8 @@ The dataset contains numerical variables that are the result of a principal comp
 
 The dataset was collected and analysed during a research collaboration of Worldline and the [Machine Learning Group](http://mlg.ulb.ac.be) of Université Libre de Bruxelles (ULB) on big data mining and fraud detection.
 
+_Note:_ The data file is no longer made available in this code repository. It is available in the Docker container or the [Credit Card Fraud Detection](https://www.kaggle.com/dalpozz/creditcardfraud/) Kaggle competition.
+
 ## Model
 
 The data is split into 5 train/test sets, balanced to account for fraud being a relatively rare event. For each split, a multi-layer perceptron (MLP) neural network is fit consisting of 28 input nodes, a densely connected hidden layer with 22 nodes with S-shaped rectified linear activation and 20% dropout, and 1 output node with a sigmoid activation. The models are fit using batches of 1200 observations for up to 100 epochs, although validation loss (binary crossentropy) is monitored to permit early stopping. Stochastic optimization is performed using _Adam_.
