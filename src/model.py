@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sns
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras_contrib.layers import SReLU
@@ -96,6 +97,8 @@ fpr, tpr, thresholds = roc_curve(Y, yhat)
 precision, recall, thresholds = precision_recall_curve(Y, yhat)
 roc_auc = auc(fpr, tpr)
 
+sns.set_style("whitegrid")
+plt.figure(figsize=(8,5))
 plt.title('Receiver Operating Characteristic')
 plt.plot(fpr, tpr, 'b', label='AUC = %0.2f'% roc_auc)
 plt.legend(loc='lower right')
