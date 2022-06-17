@@ -1,6 +1,6 @@
 Keras==2.0.5
 -e git+https://www.github.com/farizrahman4u/keras-contrib.git@b5669f4#egg=keras-contrib
-numpy==1.13.0
+numpy==1.21.0
 pandas==0.19.1
 pyparsing==2.1.10
 pytest==3.1.2
